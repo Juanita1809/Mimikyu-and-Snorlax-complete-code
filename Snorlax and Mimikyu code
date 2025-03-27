@@ -1,0 +1,122 @@
+from gpiozero import AngularServo, PWMLED, RGBLED, Servo
+import time
+import threading
+
+# Debug settings
+debug_messages = 1
+if debug_messages:
+    print("Debug on")
+else:
+    print("Debug off")
+
+# Initialize RGB LED for Snorlax's and Mimikyu's traffic light control
+Mimikyu_traffic_led = RGBLED(red=12, green=25, blue=24)
+snorlax_traffic_led = RGBLED(red=3, green=2, blue=17)
+
+# Raspberry Pi Pins for Mimikyu's eyes (RGB LEDs for Mimikyu)
+redleft_pwm_pin = PWMLED(26)
+greenleft_pwm_pin = PWMLED(19)
+blueleft_pwm_pin = PWMLED(13)
+
+# Raspberry Pi Pins for Snorlax's eyes (RGB LEDs for Snorlax)
+redright_pwm_pin = PWMLED(6)
+greenright_pwm_pin = PWMLED(5)
+bluerright_pwm_pin = PWMLED(16)
+
+# Initialize servos
+servo_mimikyu = AngularServo(20, min_angle=0, max_angle=90, min_pulse_width=0.0006, max_pulse_width=0.0023)  # Mimikyu's servo
+servo_left = Servo(18)  # Snorlax's left servo
+servo_right = Servo(21)  # Snorlax's right servo
+
+# Traffic light sequence for Snorlax (using snorlax_traffic_led)
+def stop_light_snorlax(traffic_light_):
+    red_value, green_value, yellow_value = traffic_light_
+    
+    while True:
+        print("Snorlax - Green LED ON")
+        snorlax_traffic_led.color = (0, 1, 0)  # Green LED on
+        time.sleep(3)
+
+        print("Snorlax - Yellow LED ON")
+        snorlax_traffic_led.color = (0, 0, 1)  # Yellow LED on
+        time.sleep(2)
+
+        print("Snorlax - Red LED ON")
+        snorlax_traffic_led.color = (1, 0, 0)  # Red LED on
+        time.sleep(4)
+
+# Traffic light sequence for Mimikyu (using Mimikyu_traffic_led)
+def stop_light_mimikyu(traffic_light_):
+    red_value, green_value, yellow_value = traffic_light_
+    
+    while True:
+        print("Mimikyu - Green LED ON")
+        Mimikyu_traffic_led.color = (0, 1, 0)  # Green LED on
+        time.sleep(3)
+
+        print("Mimikyu - Yellow LED ON")
+        Mimikyu_traffic_led.color = (0, 0, 1)  # Yellow LED on
+        time.sleep(2)
+
+        print("Mimikyu - Red LED ON")
+        Mimikyu_traffic_led.color = (1, 0, 0)  # Red LED on
+        time.sleep(4)
+
+# Function to control RGB LEDs for both Mimikyu's and Snorlax's eyes
+def update_eyes():
+    eyes_left_RGBLEDs = {'red_RGBLED': 0.4, 'green_RGBLED': 0.2, 'blue_RGBLED': 0.8}
+    eyes_right_RGBLEDs = {'red_RGBLED': 0.4, 'green_RGBLED': 0.2, 'blue_RGBLED': 0.8}
+
+    while True:  # Keep the eyes LEDs on continuously
+        redleft_pwm_pin.value = eyes_left_RGBLEDs['red_RGBLED']
+        greenleft_pwm_pin.value = eyes_left_RGBLEDs['green_RGBLED']
+        blueleft_pwm_pin.value = eyes_left_RGBLEDs['blue_RGBLED']
+
+        redright_pwm_pin.value = eyes_right_RGBLEDs['red_RGBLED']
+        greenright_pwm_pin.value = eyes_right_RGBLEDs['green_RGBLED']
+        bluerright_pwm_pin.value = eyes_right_RGBLEDs['blue_RGBLED']
+
+        time.sleep(0.1)  # Update the eyes every 0.1 second, can be adjusted if needed
+
+# Function to control Snorlax's servos (cycle between min, mid, and max)
+def control_servos():
+    while True:
+        servo_left.min()  # Move left servo to min position
+        servo_right.max()  # Move right servo to max position
+        time.sleep(0.5)
+        
+        servo_left.mid()  # Move left servo to middle position
+        servo_right.mid()  # Move right servo to middle position
+        time.sleep(0.5)
+        
+        servo_left.max()  # Move left servo to max position
+        servo_right.min()  # Move right servo to min position
+        time.sleep(0.5)
+
+# Function to move Mimikyu's servo by 10 degrees back and forth
+def move_mimikyu_servo():
+    while True:
+        servo_mimikyu.angle = 10  # Move Mimikyu's servo to 10 degrees
+        time.sleep(0.5)  # Wait for 0.5 seconds
+        servo_mimikyu.angle = 0  # Move back to 0 degrees
+        time.sleep(0.5)  # Wait for 0.5 seconds
+
+# Main function to start all threads
+def main():
+    print("Welcome to the combined Snorlax and Mimikyu bot!")
+
+    # Start traffic light, servo control (Snorlax's), Mimikyu's servo control, and eyes LED in separate threads
+    threading.Thread(target=stop_light_snorlax, args=((1, 1, 0),)).start()  # Snorlax's traffic light (Red, Green, Yellow)
+    threading.Thread(target=stop_light_mimikyu, args=((1, 1, 0),)).start()  # Mimikyu's traffic light (Red, Green, Yellow)
+    threading.Thread(target=update_eyes).start()  # RGB LEDs for eyes
+    threading.Thread(target=move_mimikyu_servo).start()  # Mimikyu's servo movement (10 degrees only)
+    threading.Thread(target=control_servos).start()  # Snorlax's servo control (min, mid, max)
+
+    # Keep the main thread the program doesn't end
+    while True:
+        time.sleep(1)
+
+# Run the program
+if __name__ == "__main__":
+    main()
+
